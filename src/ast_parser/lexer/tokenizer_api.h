@@ -13,7 +13,6 @@ typedef struct TTokenizer TTokenizer;
 
 TTokenizer *tokenizer_from_file_data(TFileData fileData);
 void delete_tokenizer(TTokenizer *tokenizer);
-TToken read_new_token(TTokenizer *tokenizer);
 
 bool is_tokenizer_error(TTokenizer *tokenizer);
 TTokenizerError get_tokenizer_error(TTokenizer *tokenizer);

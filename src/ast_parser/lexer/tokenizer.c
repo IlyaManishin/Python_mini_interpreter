@@ -277,8 +277,8 @@ static TToken read_keyword_token(TTokenizer *tokenizer)
             type = FALSE_KW;
         break;
     case 'N':
-        if (try_to_tgets(tokenizer, "ull"))
-            type = NULL_KW;
+        if (try_to_tgets(tokenizer, "one"))
+            type = NONE_KW;
         break;
     }
 

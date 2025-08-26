@@ -9,7 +9,9 @@ typedef uint8_t digit;
 typedef enum LiteralTypes
 {
     STRING_L,
-    NUMBER_L
+    NUMBER_L,
+    BOOL_L,
+    NONE_L
 } LiteralTypes;
 
 typedef struct TLong
@@ -39,7 +41,12 @@ typedef struct TString
 typedef struct TBool
 {
     bool value;
-} Tbool;
+} TBool;
+
+typedef struct TNone
+{
+
+} TNone;
 
 typedef struct TLiteral
 {
@@ -48,7 +55,8 @@ typedef struct TLiteral
     {
         TNumber number;
         TString string;
-        Tbool boolLit;
+        TBool boolLit;
+        TNone none;
     };
 
 } TLiteral;

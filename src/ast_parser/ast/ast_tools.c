@@ -39,7 +39,7 @@ bool lookahead(TAstParser *p, TokenTypes checkType)
     return false;
 }
 
-static TToken read_token(TAstParser *p)
+TToken read_token(TAstParser *p)
 {
     return token_soft_read(p->tokenizer);
 }
@@ -50,6 +50,19 @@ static TNode *get_node(TDataArena *arena, NodeTypes type)
     if (node == NULL)
         return NULL;
     node->type = type;
+    return node;
+}
+
+TNode *init_array_node(TDataArena *arena, NodeTypes itemType, TNode **nodes, int length)
+{
+    TNode *node = get_node(arena, NODES_ARRAY_TYPE);
+    if (node == NULL)
+        return NULL;
+
+    TNodeArray *asArray = &node->nodeValue.array;
+    asArray->length = length;
+    asArray->nodes = nodes;
+
     return node;
 }
 
@@ -74,60 +87,54 @@ static char *copy_token_str(TDataArena *arena, TToken token, size_t *lengthDest)
     return res;
 }
 
-TNode *read_ident(TAstParser *p)
-{
-    int pos = get_tokenizer_pos(p->tokenizer);
-    TToken token = read_token(p);
-    if (token.type != IDENT || is_bool_ident(token))
-    {
-        set_tokenizer_pos(p->tokenizer, pos);
-        return NULL;
-    }
-
-    TDataArena *arena = get_parser_arena(p);
-    TNode *node = get_node(arena, LITERAL_TYPE);
-    if (node == NULL)
-    {
-        goto memory_error;
-    }
-    size_t identLength;
-    char *identName = copy_token_str(arena, token, &identLength);
-    if (identName == NULL)
-        goto memory_error;
-
-    TString *asString = &node->nodeValue.literal.string;
-    asString->data = identName;
-    asString->length = identLength;
-    return node;
-
-memory_error:
-    set_memory_crit_error(p);
-    set_tokenizer_pos(p->tokenizer, pos);
-    return NULL;
-}
-
-TNode *init_statements_node(TDataArena *arena, TNode **statements, int length)
-{
-    TNode *node = get_node(arena, STATEMENTS_TYPE);
-    if (node == NULL)
-        return NULL;
-
-    TStatements *nodeValuePtr = &node->nodeValue.statements;
-    nodeValuePtr->statementsArr = statements;
-    nodeValuePtr->length = length;
-    return node;
-}
-
-TNode *init_bin_op_node(TDataArena *arena, OperationTypes opType, TNode *left, TNode *right)
+TNode *init_bin_op_node(TDataArena *arena, BinOpTypes opType, TNode *left, TNode *right)
 {
     TNode *node = get_node(arena, OP_TYPE);
     if (node == NULL)
         return NULL;
 
-    TOperation *asOperation = &node->nodeValue.op;
-    asOperation->type = opType;
-    asOperation->left = left;
-    asOperation->right = right;
+    TBinOperation *asBinOp = &node->nodeValue.op.binOp;
+    asBinOp->type = opType;
+    asBinOp->left = left;
+    asBinOp->right = right;
+
+    return node;
+}
+
+TNode *init_run_func_node(TDataArena *arena, TNode *funcIdent, TNode *args)
+{
+    TNode *node = get_node(arena, STATEMENT_TYPE);
+    if (node == NULL)
+        return NULL;
+    TFuncRunStmt *asFuncRun = &node->nodeValue.statement.funcRun;
+    asFuncRun->ident = funcIdent;
+    asFuncRun->args = args;
+
+    return node;
+}
+
+bool is_ident_token(TToken token)
+{
+    return token.type == IDENT && !is_bool_ident(token);
+}
+
+TNode *init_ident_node(TDataArena *arena, TToken identToken)
+{
+    assert(identToken.type == IDENT);
+    TNode *node = get_node(arena, IDENT_TYPE);
+    if (node == NULL)
+        return NULL;
+
+    size_t identLength;
+    char *identName = copy_token_str(arena, identToken, &identLength);
+    if (identName == NULL)
+    {
+        delete_node(arena, node);
+        return NULL;
+    }
+    TIdent *asIdent = &node->nodeValue.ident;
+    asIdent->str = identName;
+    asIdent->length = identLength;
 
     return node;
 }

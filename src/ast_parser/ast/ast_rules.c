@@ -12,15 +12,23 @@
     if (is_critical_error(p)) \
         return NULL;
 
-#define DONE_RULE_POSTFIX()          \
-    done:                            \
-    flush_used_tokens(p->tokenizer); \
-    return res;
+#define HANDLE_NULL_NODE(node)    \
+    if (node == NULL)             \
+    {                             \
+        set_memory_crit_error(p); \
+        return NULL;              \
+    }
+
+#define DONE_RULE_POSTFIX(returnValue) \
+    done:                              \
+    flush_used_tokens(p->tokenizer);   \
+    return returnValue;
 
 static TNode *statements_rule(TAstParser *p);
 static TNode *statement_rule(TAstParser *p);
 static TNode *assign_rule(TAstParser *p);
 static TNode *func_run_rule(TAstParser *p);
+static TNode *read_args_rule(TAstParser *p);
 static TNode *expr_rule(TAstParser *p);
 static TNode *term_rule(TAstParser *p);
 static TNode *factor_rule(TAstParser *p);
@@ -60,11 +68,8 @@ static TNode *statements_rule(TAstParser *p)
         {
             size_t newCapacity = 2 * capacity;
             TNode **newStatements = (TNode **)arena_realloc(arena, statements, capacity * sizeof(TNode *), newCapacity * sizeof(TNode *));
-            if (newStatements == NULL)
-            {
-                set_memory_crit_error(p);
-                break;
-            }
+            HANDLE_NULL_NODE(newStatements);
+
             statements = newStatements;
             capacity = newCapacity;
         }
@@ -75,15 +80,11 @@ static TNode *statements_rule(TAstParser *p)
         arena_free(arena, statements);
         return NULL;
     }
-    TNode *statementsNode = init_statements_node(arena, statements, length);
-    if (statementsNode == NULL)
-    {
-        set_memory_crit_error(p);
-        return NULL;
-    }
+    TNode *statementsNode = init_array_node(arena, STATEMENT_TYPE, statements, length);
+    HANDLE_NULL_NODE(statementsNode)
 
     flush_used_tokens(p->tokenizer);
-    return NULL;
+    return statementsNode;
 }
 
 static TNode *statement_rule(TAstParser *p)
@@ -103,10 +104,9 @@ static TNode *statement_rule(TAstParser *p)
         goto done;
     }
     set_tokenizer_pos(p->tokenizer, curPos);
+    return NULL;
 
-done:
-    flush_used_tokens(p->tokenizer);
-    return statement;
+    DONE_RULE_POSTFIX(statement)
 }
 
 static TNode *assign_rule(TAstParser *p)
@@ -115,37 +115,55 @@ static TNode *assign_rule(TAstParser *p)
         return NULL;
 
     TDataArena *arena = get_parser_arena(p);
+    int pos = get_tokenizer_pos(p->tokenizer);
 
-    TNode *res = NULL;
+    TNode *assign = NULL;
     TNode *ident, *expr;
 
-    if ((ident = read_ident(p)) &&
+    if ((ident = ident_rule(p)) &&
         lookahead(p, ASSIGN) &&
         (expr = expr_rule(p)))
     {
-        res = init_bin_op_node(arena, OP_ASSIGN, ident, expr);
+        assign = init_bin_op_node(arena, BIN_OP_ASSIGN, ident, expr);
+        HANDLE_NULL_NODE(assign);
         goto done;
     }
+    set_tokenizer_pos(p->tokenizer, pos);
+    return NULL;
 
-done:
-    flush_used_tokens(p->tokenizer);
-    return res;
+    DONE_RULE_POSTFIX(assign)
 }
 
 static TNode *func_run_rule(TAstParser *p)
 {
     if (is_critical_error(p))
         return NULL;
-    TNode *res = NULL;
-    TNode* func, args;
+    TDataArena *arena = get_parser_arena(p);
+    int pos = get_tokenizer_pos(p->tokenizer);
 
-    DONE_RULE_POSTFIX()
+    TNode *funcRun = NULL;
+    TNode *funcIdent, *args;
+    if ((funcIdent = ident_rule(p)) &&
+        lookahead(p, LBRACE) &&
+        (args = read_args_rule(p)) &&
+        lookahead(p, RBRACE))
+    {
+        TNode *funcRun = init_run_func_node(arena, funcIdent, args);
+        HANDLE_NULL_NODE(funcRun);
+        goto done;
+    }
+
+    set_tokenizer_pos(p->tokenizer, pos);
+    return NULL;
+
+    DONE_RULE_POSTFIX(funcRun)
 }
 
 static TNode *read_args_rule(TAstParser *p)
 {
     if (is_critical_error(p))
         return NULL;
+
     return NULL;
 }
 
@@ -209,5 +227,18 @@ static TNode *ident_rule(TAstParser *p)
 {
     if (is_critical_error(p))
         return NULL;
-    return NULL;
+
+    TDataArena *arena = get_parser_arena(p);
+    int pos = get_tokenizer_pos(p->tokenizer);
+
+    TToken token = read_token(p);
+    if (!is_ident_token(token))
+    {
+        set_tokenizer_pos(p->tokenizer, pos);
+        return NULL;
+    }
+    TNode *ident = init_ident_node(arena, token);
+    HANDLE_NULL_NODE(ident)
+
+    DONE_RULE_POSTFIX(ident)
 }

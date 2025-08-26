@@ -16,7 +16,7 @@ typedef enum TokenTypes
     BREAK_KW,    // break
     CONTINUE_KW, // continue
     TRUE_KW,     // True
-    NULL_KW,     // Null
+    NONE_KW,     // None
     FALSE_KW,    // False
     AND_KW,      // and
     OR_KW,       // or
