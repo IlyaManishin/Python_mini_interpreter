@@ -8,6 +8,7 @@
 #include "internal/ast_base_types/statements.h"
 
 #define BASE_NODES_ARRAY_SIZE 16
+#define BASE_ARGS_LIST_SIZE 8
 
 typedef enum NodeTypes
 {

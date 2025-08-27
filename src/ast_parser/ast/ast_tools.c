@@ -39,6 +39,15 @@ bool lookahead(TAstParser *p, TokenTypes checkType)
     return false;
 }
 
+bool check_next_token(TAstParser *p, TokenTypes type)
+{
+    int pos = get_tokenizer_pos(p->tokenizer);
+    int res = lookahead(p, type);
+    set_tokenizer_pos(p->tokenizer, pos);
+
+    return res;
+}
+
 TToken read_token(TAstParser *p)
 {
     return token_soft_read(p->tokenizer);
@@ -64,6 +73,11 @@ TNode *init_array_node(TDataArena *arena, NodeTypes itemType, TNode **nodes, int
     asArray->nodes = nodes;
 
     return node;
+}
+
+TNode *init_empty_array_node(TDataArena *arena, NodeTypes itemType)
+{
+    return init_array_node(arena, itemType, NULL, 0);
 }
 
 void delete_node(TDataArena *arena, TNode *node)
@@ -97,6 +111,19 @@ TNode *init_bin_op_node(TDataArena *arena, BinOpTypes opType, TNode *left, TNode
     asBinOp->type = opType;
     asBinOp->left = left;
     asBinOp->right = right;
+
+    return node;
+}
+
+TNode *init_unary_op_node(TDataArena *arena, UnOpTypes opType, TNode *child)
+{
+    TNode *node = get_node(arena, OP_TYPE);
+    if (node == NULL)
+        return NULL;
+
+    TUnOperation *asUnOp = &node->nodeValue.op.unOp;
+    asUnOp->type = opType;
+    asUnOp->child = child;
 
     return node;
 }
@@ -137,4 +164,13 @@ TNode *init_ident_node(TDataArena *arena, TToken identToken)
     asIdent->length = identLength;
 
     return node;
+}
+TNode *init_string_node(TDataArena *arena, TToken identToken)
+{
+    return NULL;
+}
+
+TNode *init_number_node(TDataArena *arena, TToken identToken)
+{
+    return NULL;
 }

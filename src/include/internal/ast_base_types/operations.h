@@ -24,13 +24,13 @@ typedef enum BinOpTypes
     BIN_OP_DIV, // /
 
     BIN_OP_ASSIGN, // =
-    UN_OP_POW,     // **
+    BIN_OP_POW     // **
 } BinOpTypes;
 
 typedef struct TUnOperation
 {
     UnOpTypes type;
-    TNode *value;
+    TNode *child;
 } TUnOperation;
 
 typedef struct TBinOperation
