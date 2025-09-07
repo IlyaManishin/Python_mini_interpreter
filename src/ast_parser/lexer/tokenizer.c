@@ -118,6 +118,9 @@ static bool lookahead(TTokenizer *tokenizer, const char *check)
         }
         cur++;
     }
+    if (is_ident_or_kw_start_symbol(*cur))
+        result = false;
+        
     cur--;
     // tgetc(tokenizer, &tok_ch);???
 
@@ -349,6 +352,8 @@ static TToken _read_two_char_operation_token(TTokenizer *tokenizer, char first, 
     case '*':
         if (second == '=')
             return make_token(tokenizer, STAR_ASSIGN);
+        if (second == '*')
+            return make_token(tokenizer, POW);
         break;
 
     case '+':
@@ -433,7 +438,7 @@ static TToken read_ident_token(TTokenizer *tokenizer)
 
 static int _read_digits_part(TTokenizer *tokenizer)
 {
-    int count = 0;
+    int digitsCount = 0;
     char ch;
     while (tgetc(tokenizer, &ch) != EOF)
     {
@@ -444,14 +449,15 @@ static int _read_digits_part(TTokenizer *tokenizer)
             tbackc(tokenizer, ch);
             break;
         }
-        count++;
+        digitsCount++;
     }
-    return count;
+    return digitsCount;
 }
 
 static TToken read_number(TTokenizer *tokenizer)
 {
     _read_digits_part(tokenizer);
+
     char after;
     int r = tgetc(tokenizer, &after);
     if (r != EOF && after == '.')
@@ -480,6 +486,8 @@ static TToken read_string_token(TTokenizer *tokenizer)
 {
     char leftEdge;
     tgetc(tokenizer, &leftEdge);
+
+    tokenizer->start = tokenizer->cur;
 
     bool isEscaped = false;
     char ch;

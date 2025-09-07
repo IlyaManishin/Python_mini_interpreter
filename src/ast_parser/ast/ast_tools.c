@@ -11,6 +11,7 @@
 #include "../parser.h"
 #include "ast.h"
 
+/*read token if token has valid type*/
 bool lookahead(TAstParser *p, TokenTypes checkType)
 {
     TTokenizer *tok = p->tokenizer;
@@ -48,18 +49,44 @@ bool check_next_token(TAstParser *p, TokenTypes type)
     return res;
 }
 
-TToken read_token(TAstParser *p)
+bool try_read_token(TAstParser *p, TokenTypes checkType, TToken *dest)
 {
-    return token_soft_read(p->tokenizer);
+    if (lookahead(p, checkType))
+    {
+        *dest = token_soft_read(p->tokenizer);
+        return true;
+    }
+    return false;
 }
 
-static TNode *get_node(TDataArena *arena, NodeTypes type)
+TNode *get_node(TDataArena *arena, NodeTypes type)
 {
     TNode *node = (TNode *)arena_malloc(arena, sizeof(TNode));
     if (node == NULL)
         return NULL;
     node->type = type;
     return node;
+}
+
+void delete_node(TDataArena *arena, TNode *node)
+{
+    arena_free(arena, node);
+}
+
+char *copy_token_str(TDataArena *arena, TToken token, size_t *lengthDest)
+{
+    size_t length = token_length(token);
+    assert(length != 0);
+    
+    char *res = (char *)arena_malloc(arena, length + 1);
+    if (res == NULL)
+    return NULL;
+    
+    memcpy(res, token.start, length);
+    res[length] = '\0'; // need?
+    if (lengthDest != NULL)
+    *lengthDest = length;
+    return res;
 }
 
 TNode *init_array_node(TDataArena *arena, NodeTypes itemType, TNode **nodes, int length)
@@ -80,38 +107,17 @@ TNode *init_empty_array_node(TDataArena *arena, NodeTypes itemType)
     return init_array_node(arena, itemType, NULL, 0);
 }
 
-void delete_node(TDataArena *arena, TNode *node)
-{
-    arena_free(arena, node);
-}
-
-static char *copy_token_str(TDataArena *arena, TToken token, size_t *lengthDest)
-{
-    size_t length = token_strlen(token);
-    assert(length != 0);
-
-    char *res = (char *)arena_malloc(arena, length + 1);
-    if (res == NULL)
-        return NULL;
-
-    memcpy(res, token.start, length);
-    res[length] = '\0'; // need?
-    if (lengthDest != NULL)
-        *lengthDest = length;
-    return res;
-}
-
 TNode *init_bin_op_node(TDataArena *arena, BinOpTypes opType, TNode *left, TNode *right)
 {
     TNode *node = get_node(arena, OP_TYPE);
     if (node == NULL)
-        return NULL;
-
+    return NULL;
+    
     TBinOperation *asBinOp = &node->nodeValue.op.binOp;
     asBinOp->type = opType;
     asBinOp->left = left;
     asBinOp->right = right;
-
+    
     return node;
 }
 
@@ -142,7 +148,7 @@ TNode *init_run_func_node(TDataArena *arena, TNode *funcIdent, TNode *args)
 
 bool is_ident_token(TToken token)
 {
-    return token.type == IDENT && !is_bool_ident(token);
+    return token.type == IDENT && !is_const_ident(token);
 }
 
 TNode *init_ident_node(TDataArena *arena, TToken identToken)
@@ -164,13 +170,4 @@ TNode *init_ident_node(TDataArena *arena, TToken identToken)
     asIdent->length = identLength;
 
     return node;
-}
-TNode *init_string_node(TDataArena *arena, TToken identToken)
-{
-    return NULL;
-}
-
-TNode *init_number_node(TDataArena *arena, TToken identToken)
-{
-    return NULL;
 }

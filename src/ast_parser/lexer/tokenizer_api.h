@@ -25,5 +25,5 @@ int get_tokenizer_pos(TTokenizer *tokenizer);
 void set_tokenizer_pos(TTokenizer *tokenizer, int pos);
 int rewind_tokenizer_pos(TTokenizer *tokenizer);
 
-size_t token_strlen(TToken token);
+size_t token_length(TToken token);
 bool check_token_str(TToken token, const char *str);

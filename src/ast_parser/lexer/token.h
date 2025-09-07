@@ -35,6 +35,7 @@ typedef enum TokenTypes
     MINUS,          // -
     MULTY,          // *
     DIVIS,          // /
+    POW,            // **
     DOUBLESLASH,    // //
     PERCENT,        // %
     EQ,             // ==
@@ -69,7 +70,7 @@ typedef enum TokenTypes
 typedef struct TToken
 {
     TokenTypes type;
-    
+
     const char *start;
     const char *end; // for ident only?
     int lineno;

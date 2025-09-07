@@ -40,6 +40,7 @@ static TNode *primary_rule(TAstParser *p);
 static TNode *number_rule(TAstParser *p);
 static TNode *string_rule(TAstParser *p);
 static TNode *ident_rule(TAstParser *p);
+static TNode *consts_rule(TAstParser *p);
 
 // if we can read rule => flush tokens
 
@@ -203,7 +204,11 @@ static TNode *read_args_rule(TAstParser *p)
         if (!lookahead(p, COMMA))
             break;
     }
-
+    if (length == 0)
+    {
+        arena_free(arena, args);
+        return NULL;
+    }
     res = init_array_node(arena, EXPRESSION_TYPE, args, length);
     HANDLE_NULL_NODE(res);
 
@@ -319,8 +324,8 @@ static TNode *factor_rule(TAstParser *p)
         }
         goto done;
     }
-
     set_tokenizer_pos(p->tokenizer, pos);
+
     if (lookahead(p, MINUS))
     {
         TNode *factor = factor_rule(p);
@@ -333,8 +338,8 @@ static TNode *factor_rule(TAstParser *p)
         HANDLE_NULL_NODE(res);
         goto done;
     }
-
     set_tokenizer_pos(p->tokenizer, pos);
+
     if ((res = unsigned_factor_rule(p)))
     {
         goto done;
@@ -364,21 +369,22 @@ static TNode *pow_rule(TAstParser *p)
     if (left == NULL)
         return NULL;
 
-    // right-associative: a ^ b ^ c => a ^ (b ^ c)
+    // right-associative
     int pos = get_tokenizer_pos(p->tokenizer);
-    if (lookahead(p, MULTY) && lookahead(p, MULTY))
+    if (lookahead(p, POW))
     {
         TNode *right = pow_rule(p);
         if (right == NULL)
         {
+            // handle error
             set_tokenizer_pos(p->tokenizer, pos);
             return left;
         }
-        TNode *node = init_bin_op_node(arena, BIN_OP_POW, left, right);
-        HANDLE_NULL_NODE(node);
+        left = init_bin_op_node(arena, BIN_OP_POW, left, right);
+        HANDLE_NULL_NODE(left);
         goto done;
     }
-    return NULL;
+    set_tokenizer_pos(p->tokenizer, pos);
 
     DONE_RULE_POSTFIX(left)
 }
@@ -390,7 +396,6 @@ static TNode *primary_rule(TAstParser *p)
 
     int pos = get_tokenizer_pos(p->tokenizer);
 
-    // parenthesized expression
     TNode *res = NULL;
     if (lookahead(p, LBRACE) &&
         (res = expr_rule(p)) &&
@@ -402,11 +407,11 @@ static TNode *primary_rule(TAstParser *p)
 
     if ((res = number_rule(p)))
         goto done;
-
     if ((res = string_rule(p)))
         goto done;
-
     if ((res = ident_rule(p)))
+        goto done;
+    if ((res = consts_rule(p)))
         goto done;
 
     DONE_RULE_POSTFIX(res)
@@ -417,15 +422,12 @@ static TNode *number_rule(TAstParser *p)
     if (is_critical_error(p))
         return NULL;
 
-    TDataArena *arena = get_parser_arena(p);
-    int pos = get_tokenizer_pos(p->tokenizer);
-
-    TToken token = read_token(p);
-    if (token.type != NUMBER)
-    {
-        set_tokenizer_pos(p->tokenizer, pos);
+    TToken token;
+    if (!try_read_token(p, NUMBER, &token))
         return NULL;
-    }
+    
+
+    TDataArena *arena = get_parser_arena(p);
     TNode *res = init_number_node(arena, token);
     HANDLE_NULL_NODE(res)
 
@@ -436,15 +438,12 @@ static TNode *string_rule(TAstParser *p)
 {
     if (is_critical_error(p))
         return NULL;
-    TDataArena *arena = get_parser_arena(p);
-    int pos = get_tokenizer_pos(p->tokenizer);
 
-    TToken token = read_token(p);
-    if (token.type != STRING)
-    {
-        set_tokenizer_pos(p->tokenizer, pos);
+    TToken token;
+    if (!try_read_token(p, STRING, &token))
         return NULL;
-    }
+
+    TDataArena *arena = get_parser_arena(p);
     TNode *res = init_string_node(arena, token);
     HANDLE_NULL_NODE(res)
 
@@ -456,17 +455,49 @@ static TNode *ident_rule(TAstParser *p)
     if (is_critical_error(p))
         return NULL;
 
-    TDataArena *arena = get_parser_arena(p);
-    int pos = get_tokenizer_pos(p->tokenizer);
-
-    TToken token = read_token(p);
-    if (!is_ident_token(token))
-    {
-        set_tokenizer_pos(p->tokenizer, pos);
+    TToken token;
+    if (!try_read_token(p, IDENT, &token))
         return NULL;
-    }
-    TNode *ident = init_ident_node(arena, token);
-    HANDLE_NULL_NODE(ident)
 
-    DONE_RULE_POSTFIX(ident)
+    TDataArena *arena = get_parser_arena(p);
+    TNode *res = init_ident_node(arena, token);
+    HANDLE_NULL_NODE(res)
+
+    DONE_RULE_POSTFIX(res)
+}
+
+static TNode *consts_rule(TAstParser *p)
+{
+    if (is_critical_error(p))
+        return NULL;
+
+    int pos = get_tokenizer_pos(p->tokenizer);
+    TDataArena *arena = get_parser_arena(p);
+
+    TNode *res = NULL;
+    if (lookahead(p, FALSE_KW))
+    {
+        res = init_bool_node(arena, 0);
+        HANDLE_NULL_NODE(res);
+        goto done;
+    }
+    else if (lookahead(p, TRUE_KW))
+    {
+        res = init_bool_node(arena, 1);
+        HANDLE_NULL_NODE(res);
+
+        goto done;
+    }
+    else if (lookahead(p, NONE_KW))
+    {
+        res = init_none_node(arena);
+        HANDLE_NULL_NODE(res);
+
+        goto done;
+    }
+
+    set_tokenizer_pos(p->tokenizer, pos);
+    return NULL;
+
+    DONE_RULE_POSTFIX(res)
 }

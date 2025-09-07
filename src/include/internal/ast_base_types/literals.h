@@ -4,6 +4,15 @@
 #include <stdint.h>
 #include <string.h>
 
+typedef long double ldouble;
+typedef long long llong;
+
+
+enum LiteralSettings
+{
+    MAX_INT_DIGITS_COUNT = 8,
+};
+
 typedef uint8_t digit;
 
 typedef enum LiteralTypes
@@ -14,22 +23,43 @@ typedef enum LiteralTypes
     NONE_L
 } LiteralTypes;
 
+typedef enum NumberTypes
+{
+    INT_NUMBER,
+    FLOAT_NUMBER
+} NumberTypes;
+
 typedef struct TLong
 {
     digit *digits;
     int digitsCount;
-    int sign;
+    bool sign;
 } TLong;
 
-typedef struct TNumber
+typedef struct TInt
 {
     bool isLong;
     union
     {
-        long long intData;
+        llong intData;
         TLong longData;
-    } numData;
+    };
+} TInt;
 
+typedef struct TFloat
+{
+    TInt intPart;
+    ldouble floatPart;
+} TFloat;
+
+typedef struct TNumber
+{
+    NumberTypes type;
+    union
+    {
+        TInt intNum;
+        TFloat floatNum;
+    };
 } TNumber;
 
 typedef struct TString

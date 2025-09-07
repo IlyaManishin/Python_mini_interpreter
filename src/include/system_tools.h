@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum ClibSettings
+enum SystemSettings
 {
     MAX_STRNLEN = 1028,
     MAX_STRNCMP = 1028
