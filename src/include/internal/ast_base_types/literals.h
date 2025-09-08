@@ -7,7 +7,6 @@
 typedef long double ldouble;
 typedef long long llong;
 
-
 enum LiteralSettings
 {
     MAX_INT_DIGITS_COUNT = 8,
@@ -18,31 +17,26 @@ typedef uint8_t digit;
 typedef enum LiteralTypes
 {
     STRING_L,
-    NUMBER_L,
+    INT_L,
+    FLOAT_L,
     BOOL_L,
     NONE_L
 } LiteralTypes;
 
-typedef enum NumberTypes
-{
-    INT_NUMBER,
-    FLOAT_NUMBER
-} NumberTypes;
-
-typedef struct TLong
+typedef struct TBigLong
 {
     digit *digits;
     int digitsCount;
     bool sign;
-} TLong;
+} TBigLong;
 
 typedef struct TInt
 {
     bool isLong;
     union
     {
-        llong intData;
-        TLong longData;
+        llong longData;
+        TBigLong bigLongData;
     };
 } TInt;
 
@@ -52,15 +46,6 @@ typedef struct TFloat
     ldouble floatPart;
 } TFloat;
 
-typedef struct TNumber
-{
-    NumberTypes type;
-    union
-    {
-        TInt intNum;
-        TFloat floatNum;
-    };
-} TNumber;
 
 typedef struct TString
 {
@@ -75,7 +60,6 @@ typedef struct TBool
 
 typedef struct TNone
 {
-
 } TNone;
 
 typedef struct TLiteral
@@ -83,7 +67,8 @@ typedef struct TLiteral
     LiteralTypes type;
     union
     {
-        TNumber number;
+        TInt intNum;
+        TFloat floatNum;
         TString string;
         TBool boolLit;
         TNone none;

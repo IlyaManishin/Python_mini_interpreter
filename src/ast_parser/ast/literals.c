@@ -13,15 +13,7 @@
 
 #define to_int(digit) ((digit) - '0')
 
-// bool is_const_ident(TToken ident)
-// {
-//     assert(ident.type == IDENT);
-//     if (check_token_str(ident, "False") || check_token_str(ident, "True") || check_token_str(ident, "None"))
-//         return true;
-//     return false;
-// }
-
-static TNode *get_literal_node(TDataArena *arena, LiteralTypes type)
+static TNode *init_literal_node(TDataArena *arena, LiteralTypes type)
 {
     TNode *literalNode = get_node(arena, LITERAL_TYPE);
     if (literalNode == NULL)
@@ -33,12 +25,77 @@ static TNode *get_literal_node(TDataArena *arena, LiteralTypes type)
     return literalNode;
 }
 
+char *extract_string_from_token(TDataArena *arena, TToken strToken, size_t *lengthDest)
+{
+    size_t length;
+    char *str = copy_token_str(arena, strToken, &length);
+    if (str == NULL)
+        return NULL;
+
+    char *cur = str;
+    char *last = str;
+    bool isLastSlash = false;
+    for (int i = 0; i < length; i++)
+    {
+        if (*cur == '\\')
+        {
+            if (isLastSlash)
+            {
+                *last++ = '\\';
+            }
+            isLastSlash = !isLastSlash;
+        }
+        else if (isLastSlash)
+        {
+            switch (*cur)
+            {
+            case 'n':
+                *last++ = '\n';
+                break;
+            case 'r':
+                *last++ = '\r';
+                break;
+            case 't':
+                *last++ = '\t';
+                break;
+            default:
+                *last++ = '\\';
+                *last++ = *cur;
+            }
+        }
+        else
+        {
+            *last++ = *cur;
+        }
+        cur++;
+    }
+    *last++ = '\0';
+    *lengthDest = last - str;
+
+    return str;
+}
+
 TNode *init_string_node(TDataArena *arena, TToken strToken)
 {
     assert(strToken.type == STRING);
     return NULL;
-    // size_t length;
-    // char *str = copy_token_str(arena, strToken, &length);
+
+    size_t strLength;
+    char *str = extract_string_from_token(arena, strToken, &strLength);
+    if (str == NULL)
+        return NULL;
+
+    TNode *strNode = init_literal_node(arena, STRING_L);
+    if (strNode == NULL)
+    {
+        arena_free(arena, str);
+        return NULL;
+    }
+    TString *asString = &strNode->nodeValue.literal.string;
+    asString->data = str;
+    asString->length = strLength;
+
+    return strNode;
 }
 
 static char *extract_number_from_token(TDataArena *arena, TToken numberToken, size_t *lengthDest)
@@ -93,13 +150,10 @@ ldouble float_part_to_double(char *floatPos, size_t floatLength)
 
 void parse_int_part(TInt *dest, char *intS, size_t intLength)
 {
+    return;
     if (intLength > MAX_INT_DIGITS_COUNT)
     {
-
-        // TLong *longData = &asNumber->longData;
-        // longData->digits = (digit *)numberS;
-        // longData->digitsCount = sLength;
-        // longData->sign = true;
+        TBigLong *asBig = &dest->bigLongData;
     }
     else
     {
@@ -110,25 +164,20 @@ TNode *init_number_node(TDataArena *arena, TToken numberToken)
 {
     assert(numberToken.type == NUMBER);
 
-    TNode *numberNode = get_literal_node(arena, NUMBER_L);
-    if (numberNode == NULL)
-        return NULL;
-    TNumber *asNumber = &numberNode->nodeValue.literal.number;
-
     size_t sLength;
     char *numberStr = extract_number_from_token(arena, numberToken, &sLength);
     if (numberStr == NULL)
-    {
-        delete_node(arena, numberNode);
         return NULL;
-    }
 
     char *floatPos = get_float_part_pos(numberStr, sLength);
     if (floatPos != NULL)
     {
-        TFloat *asFloat = &asNumber->floatNum;
+        TNode *floatNode = init_literal_node(arena, FLOAT_L);
+        if (floatNode == NULL)
+            return NULL;
 
-        asNumber->type = FLOAT_NUMBER;
+        TFloat *asFloat = &floatNode->nodeValue.literal.floatNum;
+
         size_t intLength = floatPos - numberStr;
         size_t floatLength = sLength - intLength;
 
@@ -137,10 +186,13 @@ TNode *init_number_node(TDataArena *arena, TToken numberToken)
     }
     else
     {
+        TNode *intNode = init_literal_node(arena, FLOAT_L);
+        if (intNode == NULL)
+            return NULL;
         size_t intLength = sLength;
-        asNumber->type = INT_NUMBER;
 
-        parse_int_part(&asNumber->intNum, numberStr, intLength);
+        TInt* asInt = &intNode->nodeValue.literal.intNum;
+        parse_int_part(asInt, numberStr, intLength);
     }
 
     // fill int data
@@ -149,7 +201,7 @@ TNode *init_number_node(TDataArena *arena, TToken numberToken)
 
 TNode *init_bool_node(TDataArena *arena, bool value)
 {
-    TNode *boolNode = get_literal_node(arena, BOOL_L);
+    TNode *boolNode = init_literal_node(arena, BOOL_L);
     if (boolNode == NULL)
         return NULL;
 
@@ -160,7 +212,7 @@ TNode *init_bool_node(TDataArena *arena, bool value)
 
 TNode *init_none_node(TDataArena *arena)
 {
-    TNode *noneNode = get_literal_node(arena, NONE_L);
+    TNode *noneNode = init_literal_node(arena, NONE_L);
     if (noneNode == NULL)
         return NULL;
     return noneNode;
