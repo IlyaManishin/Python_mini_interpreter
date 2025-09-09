@@ -25,7 +25,7 @@ static TNode *init_literal_node(TDataArena *arena, LiteralTypes type)
     return literalNode;
 }
 
-char *extract_string_from_token(TDataArena *arena, TToken strToken, size_t *lengthDest)
+static char *extract_string_from_token(TDataArena *arena, TToken strToken, size_t *lengthDest)
 {
     size_t length;
     char *str = copy_token_str(arena, strToken, &length);
@@ -62,6 +62,7 @@ char *extract_string_from_token(TDataArena *arena, TToken strToken, size_t *leng
                 *last++ = '\\';
                 *last++ = *cur;
             }
+            isLastSlash = false;
         }
         else
         {
@@ -78,7 +79,6 @@ char *extract_string_from_token(TDataArena *arena, TToken strToken, size_t *leng
 TNode *init_string_node(TDataArena *arena, TToken strToken)
 {
     assert(strToken.type == STRING);
-    return NULL;
 
     size_t strLength;
     char *str = extract_string_from_token(arena, strToken, &strLength);
@@ -117,13 +117,12 @@ static char *extract_number_from_token(TDataArena *arena, TToken numberToken, si
         cur++;
     }
     *end = '\0';
-    end++;
 
     *lengthDest = end - numberStr;
     return numberStr;
 }
 
-char *get_float_part_pos(char *numberStr, size_t length)
+static char *get_float_point_pos(char *numberStr, size_t length)
 {
     char *cur = numberStr;
     for (int i = 0; i < length; i++)
@@ -135,28 +134,59 @@ char *get_float_part_pos(char *numberStr, size_t length)
     return NULL;
 }
 
-ldouble float_part_to_double(char *floatPos, size_t floatLength)
+static ldouble float_part_to_double(char *pointPos, size_t floatLength)
 {
-    char *curDigit = floatPos + 1;
-    ldouble res = 0;
-    ldouble multyPl = 0.1;
+    if (floatLength > FLOAT_DIGITS_LIMIT)
+    {
+        // set warning
+    }
+    char *curDigit = pointPos + 1;
+    ldouble res = 0.0L;
+    ldouble multyPl = 0.1L;
     for (int i = 0; i < floatLength; i++)
     {
         res += to_int(*curDigit) * multyPl;
         multyPl /= 10;
+        curDigit++;
     }
     return res;
 }
 
-void parse_int_part(TInt *dest, char *intS, size_t intLength)
+static void parse_int_part(TDataArena *arena, TInt *dest, char *intS, size_t intLength)
 {
-    return;
-    if (intLength > MAX_INT_DIGITS_COUNT)
+    while (intLength > 0)
     {
+        if (*intS != '0')
+            break;
+
+        intS++;
+        intLength--;
+    }
+    if (intLength == 0)
+    {
+        dest->isBigLong = false;
+        dest->longData = 0ll;
+        return;
+    }
+
+    if (intLength > MAX_LONG_DIGITS_COUNT)
+    {
+        digit *digits = (digit *)arena_malloc(arena, intLength * sizeof(digit));
+        for (int i = 0; i < intLength; i++)
+        {
+            digits[i] = (digit)to_int(intS[i]);
+        }
+        dest->isBigLong = true;
+
         TBigLong *asBig = &dest->bigLongData;
+        asBig->digits = digits;
+        asBig->digitsCount = intLength;
+        asBig->sign = false;
     }
     else
     {
+        dest->isBigLong = false;
+        dest->longData = atoll(intS);
     }
 }
 
@@ -169,34 +199,35 @@ TNode *init_number_node(TDataArena *arena, TToken numberToken)
     if (numberStr == NULL)
         return NULL;
 
-    char *floatPos = get_float_part_pos(numberStr, sLength);
-    if (floatPos != NULL)
+    TNode *res;
+    char *pointPos = get_float_point_pos(numberStr, sLength);
+    if (pointPos != NULL)
     {
-        TNode *floatNode = init_literal_node(arena, FLOAT_L);
-        if (floatNode == NULL)
+        res = init_literal_node(arena, FLOAT_L);
+        if (res == NULL)
             return NULL;
 
-        TFloat *asFloat = &floatNode->nodeValue.literal.floatNum;
+        TFloat *asFloat = &res->nodeValue.literal.floatNum;
 
-        size_t intLength = floatPos - numberStr;
+        size_t intLength = pointPos - numberStr;
         size_t floatLength = sLength - intLength;
 
-        asFloat->floatPart = float_part_to_double(floatPos, floatLength);
-        parse_int_part((TInt *)asFloat, numberStr, intLength);
+        asFloat->floatPart = float_part_to_double(pointPos, floatLength);
+        *pointPos = '\0';
+        parse_int_part(arena, (TInt *)asFloat, numberStr, intLength);
     }
     else
     {
-        TNode *intNode = init_literal_node(arena, FLOAT_L);
-        if (intNode == NULL)
+        res = init_literal_node(arena, INT_L);
+        if (res == NULL)
             return NULL;
         size_t intLength = sLength;
 
-        TInt* asInt = &intNode->nodeValue.literal.intNum;
-        parse_int_part(asInt, numberStr, intLength);
+        TInt *asInt = &res->nodeValue.literal.intNum;
+        parse_int_part(arena, asInt, numberStr, intLength);
     }
-
-    // fill int data
-    return NULL;
+    arena_free(arena, numberStr);
+    return res;
 }
 
 TNode *init_bool_node(TDataArena *arena, bool value)

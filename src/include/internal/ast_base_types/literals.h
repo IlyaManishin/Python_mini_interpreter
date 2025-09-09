@@ -9,7 +9,8 @@ typedef long long llong;
 
 enum LiteralSettings
 {
-    MAX_INT_DIGITS_COUNT = 8,
+    MAX_LONG_DIGITS_COUNT = 8,
+    FLOAT_DIGITS_LIMIT = 32
 };
 
 typedef uint8_t digit;
@@ -32,7 +33,7 @@ typedef struct TBigLong
 
 typedef struct TInt
 {
-    bool isLong;
+    bool isBigLong;
     union
     {
         llong longData;

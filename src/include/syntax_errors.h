@@ -12,15 +12,17 @@ typedef struct TErrorFilePos
     const char *bufferEnd;
 } TErrorFilePos;
 
-typedef enum TokenizerErrTypes
+typedef enum ParserErrorTypes
 {
     INVALID_TOKEN,
-    MEMORY_ERROR
-} TokenizerErrTypes;
+    INVALID_RULE,
+    MEMORY_ERROR,
+    WARNING
+} ParserErrorTypes;
 
 typedef struct TTokenizerError
 {
-    TokenizerErrTypes type;
+    ParserErrorTypes type;
     const char *textMsg;
 
     bool withPos;
