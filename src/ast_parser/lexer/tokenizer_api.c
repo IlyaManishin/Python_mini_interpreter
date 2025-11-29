@@ -70,8 +70,8 @@ size_t token_strlen(TToken token)
 
 bool check_token_str(TToken token, const char *str)
 {
-    size_t strLength = nsu_strnlen(str, MAX_STRNLEN);
     size_t tokenLength = token_strlen(token);
+    size_t strLength = nsu_strnlen(str, tokenLength + 1);
     if (strLength != tokenLength)
         return false;
 

@@ -14,7 +14,7 @@
 #define is_digit(ch) ((ch) >= '0' && (ch) <= '9')
 #define is_string_start_symbol(ch) (ch == '"' || ch == '\'' || ch == '`')
 
-static void set_pos_tokenizer_error(TTokenizer *tokenizer, const char *errStart, const char *textMsg, TokenizerErrTypes type)
+static void set_pos_tokenizer_error(TTokenizer *tokenizer, const char *errStart, const char *textMsg, TokErrorTypes type)
 {
     tokenizer->tokError.textMsg = textMsg;
     tokenizer->tokError.withPos = true;
@@ -28,7 +28,7 @@ static void set_invalid_token_error(TTokenizer *tokenizer, const char *errStart,
     set_pos_tokenizer_error(tokenizer, errStart, textMsg, INVALID_TOKEN);
 }
 
-static void set_base_tokenizer_error(TTokenizer *tokenizer, char *textMsg, TokenizerErrTypes type)
+static void set_base_tokenizer_error(TTokenizer *tokenizer, char *textMsg, TokErrorTypes type)
 {
     tokenizer->tokError.textMsg = textMsg;
     tokenizer->tokError.withPos = false;
